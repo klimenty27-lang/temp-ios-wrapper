@@ -1,0 +1,48 @@
+name: Build TEMP unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned iPhone app
+        run: |
+          xcodebuild \
+            -project TempApp.xcodeproj \
+            -scheme TempApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
+
+      - name: Package IPA
+        run: |
+          rm -rf Payload TEMP.ipa
+          mkdir Payload
+          cp -R "build/Build/Products/Release-iphoneos/TempApp.app" Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload TEMP.ipa
+          ls -lh TEMP.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: TEMP-iPhone-IPA
+          path: TEMP.ipa
+          if-no-files-found: error
+          retention-days: 30
