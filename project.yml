@@ -1,0 +1,22 @@
+name: TempApp
+options:
+  bundleIdPrefix: kz.mservice
+  deploymentTarget:
+    iOS: "16.0"
+
+targets:
+  TempApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: TempApp
+    info:
+      path: TempApp/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kz.mservice.temp
+        PRODUCT_NAME: TempApp
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: "NO"
+        CODE_SIGN_STYLE: Automatic
