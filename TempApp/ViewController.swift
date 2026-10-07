@@ -1,89 +1,53 @@
 import UIKit
 import WebKit
 
-final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
-    private let startURL = URL(string: "https://temp-kz.pages.dev/")!
+final class ViewController: UIViewController, WKNavigationDelegate {
+    private var webView: WKWebView!
+    private let startURL = URL(string: "https://temp-kz.pages.dev")!
 
-    private lazy var webView: WKWebView = {
+    override func loadView() {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
-        config.defaultWebpagePreferences.allowsContentJavaScript = true
-        config.preferences.javaScriptCanOpenWindowsAutomatically = true
-        config.applicationNameForUserAgent = "TEMP-iOS/1.0"
+        config.allowsInlineMediaPlayback = true
 
-        let view = WKWebView(frame: .zero, configuration: config)
-        view.navigationDelegate = self
-        view.uiDelegate = self
-        view.allowsBackForwardNavigationGestures = true
-        view.scrollView.keyboardDismissMode = .interactive
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
+        let controller = WKUserContentController()
+        let js = """
+        (function() {
+          var meta = document.querySelector('meta[name=viewport]');
+          if (!meta) { meta = document.createElement('meta'); meta.name='viewport'; document.head.appendChild(meta); }
+          meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover';
+          var style = document.createElement('style');
+          style.innerHTML = `
+            html, body { width:100% !important; max-width:100% !important; min-width:0 !important; overflow-x:hidden !important; -webkit-text-size-adjust:100% !important; }
+            * { box-sizing:border-box; }
+            @media (max-width: 600px) {
+              body { font-size: 13px !important; }
+              button, input, select, textarea { font-size: 13px !important; }
+            }
+          `;
+          document.head.appendChild(style);
+        })();
+        """
+        controller.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        config.userContentController = controller
 
-    private let refreshControl = UIRefreshControl()
+        webView = WKWebView(frame: .zero, configuration: config)
+        webView.navigationDelegate = self
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.alwaysBounceVertical = false
+        webView.isOpaque = true
+        webView.backgroundColor = UIColor(red: 0.015, green: 0.055, blue: 0.10, alpha: 1)
+        webView.scrollView.backgroundColor = webView.backgroundColor
+        view = webView
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-
-        view.addSubview(webView)
-        NSLayoutConstraint.activate([
-            webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-
-        refreshControl.addTarget(self, action: #selector(refreshPage), for: .valueChanged)
-        webView.scrollView.refreshControl = refreshControl
-        webView.load(URLRequest(url: startURL, cachePolicy: .reloadRevalidatingCacheData))
+        webView.load(URLRequest(url: startURL, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 30))
     }
 
-    @objc private func refreshPage() {
-        webView.reload()
-    }
-
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        refreshControl.endRefreshing()
-    }
-
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        refreshControl.endRefreshing()
-    }
-
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        refreshControl.endRefreshing()
-    }
-
-    func webView(
-        _ webView: WKWebView,
-        createWebViewWith configuration: WKWebViewConfiguration,
-        for navigationAction: WKNavigationAction,
-        windowFeatures: WKWindowFeatures
-    ) -> WKWebView? {
-        if navigationAction.targetFrame == nil, let requestURL = navigationAction.request.url {
-            webView.load(URLRequest(url: requestURL))
-        }
-        return nil
-    }
-
-    func webView(
-        _ webView: WKWebView,
-        decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
-    ) {
-        guard let url = navigationAction.request.url else {
-            decisionHandler(.cancel)
-            return
-        }
-
-        let scheme = (url.scheme ?? "").lowercased()
-        if ["tel", "mailto", "sms", "maps"].contains(scheme) {
-            UIApplication.shared.open(url)
-            decisionHandler(.cancel)
-            return
-        }
-
-        decisionHandler(.allow)
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        webView.frame = view.bounds
     }
 }
