@@ -13,19 +13,62 @@ final class ViewController: UIViewController, WKNavigationDelegate {
         let controller = WKUserContentController()
         let js = """
         (function() {
-          var meta = document.querySelector('meta[name=viewport]');
-          if (!meta) { meta = document.createElement('meta'); meta.name='viewport'; document.head.appendChild(meta); }
-          meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover';
-          var style = document.createElement('style');
-          style.innerHTML = `
-            html, body { width:100% !important; max-width:100% !important; min-width:0 !important; overflow-x:hidden !important; -webkit-text-size-adjust:100% !important; }
-            * { box-sizing:border-box; }
-            @media (max-width: 600px) {
+          let meta = document.querySelector('meta[name="viewport"]');
+          if (!meta) {
+            meta = document.createElement('meta');
+            meta.name = 'viewport';
+            document.head.appendChild(meta);
+          }
+          meta.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+
+          const style = document.createElement('style');
+          style.id = 'temp-ios-adaptive-v3';
+          style.textContent = `
+            :root {
+              --temp-safe-top: env(safe-area-inset-top, 0px);
+              --temp-safe-right: env(safe-area-inset-right, 0px);
+              --temp-safe-bottom: env(safe-area-inset-bottom, 0px);
+              --temp-safe-left: env(safe-area-inset-left, 0px);
+            }
+            html {
+              width: 100% !important;
+              min-height: 100% !important;
+              background: #031426 !important;
+              -webkit-text-size-adjust: 100% !important;
+            }
+            body {
+              width: 100% !important;
+              min-width: 0 !important;
+              max-width: 100% !important;
+              min-height: 100dvh !important;
+              margin: 0 !important;
+              overflow-x: hidden !important;
+              background: #031426 !important;
+              padding-left: var(--temp-safe-left) !important;
+              padding-right: var(--temp-safe-right) !important;
+            }
+            *, *::before, *::after { box-sizing: border-box !important; }
+            img, video, canvas, svg { max-width: 100%; }
+            input, select, textarea, button { max-width: 100%; }
+            @media (max-width: 430px) {
               body { font-size: 13px !important; }
               button, input, select, textarea { font-size: 13px !important; }
             }
+            @media (max-width: 380px) {
+              body { font-size: 12px !important; }
+              button, input, select, textarea { font-size: 12px !important; }
+            }
           `;
           document.head.appendChild(style);
+
+          // Keep focused fields visible when the iPhone keyboard opens.
+          document.addEventListener('focusin', function(e) {
+            if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
+              setTimeout(() => {
+                e.target.scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'});
+              }, 350);
+            }
+          });
         })();
         """
         controller.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
@@ -33,12 +76,23 @@ final class ViewController: UIViewController, WKNavigationDelegate {
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
-        webView.scrollView.alwaysBounceVertical = false
-        webView.isOpaque = true
-        webView.backgroundColor = UIColor(red: 0.015, green: 0.055, blue: 0.10, alpha: 1)
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        webView.scrollView.keyboardDismissMode = .interactive
+        webView.isOpaque = false
+        webView.backgroundColor = UIColor(red: 3/255, green: 20/255, blue: 38/255, alpha: 1)
         webView.scrollView.backgroundColor = webView.backgroundColor
-        view = webView
+
+        let container = UIView()
+        container.backgroundColor = webView.backgroundColor
+        container.addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            webView.topAnchor.constraint(equalTo: container.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        view = container
     }
 
     override func viewDidLoad() {
@@ -46,8 +100,5 @@ final class ViewController: UIViewController, WKNavigationDelegate {
         webView.load(URLRequest(url: startURL, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 30))
     }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        webView.frame = view.bounds
-    }
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
 }

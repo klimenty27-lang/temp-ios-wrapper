@@ -9,6 +9,9 @@ targets:
     platform: iOS
     sources:
       - TempApp
+    resources:
+      - TempApp/LaunchScreen.storyboard
+      - TempApp/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: kz.temp.app
@@ -16,5 +19,6 @@ targets:
         TARGETED_DEVICE_FAMILY: '1'
         SUPPORTS_MACCATALYST: NO
         GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: TempApp/Info.plist
