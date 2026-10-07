@@ -1,4 +1,4 @@
-name: Build TEMP unsigned IPA
+name: Build TEMP iPhone IPA
 
 on:
   workflow_dispatch:
@@ -35,14 +35,17 @@ jobs:
         run: |
           rm -rf Payload TEMP.ipa
           mkdir Payload
-          cp -R "build/Build/Products/Release-iphoneos/TempApp.app" Payload/
+          APP_PATH="$(find build/Build/Products/Release-iphoneos -maxdepth 1 -type d -name '*.app' | head -n 1)"
+          echo "Found app: $APP_PATH"
+          test -n "$APP_PATH"
+          cp -R "$APP_PATH" Payload/
           ditto -c -k --sequesterRsrc --keepParent Payload TEMP.ipa
           ls -lh TEMP.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: TEMP-iPhone-IPA
+          name: TEMP-iPhone-IPA-Fullscreen
           path: TEMP.ipa
           if-no-files-found: error
           retention-days: 30
