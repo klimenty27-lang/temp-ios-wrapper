@@ -78,6 +78,6 @@ final class TempSettingsViewController: UIViewController {
         access.addArrangedSubview(text("Пароль аккаунта ТЕМП по-прежнему проверяется сервером.", size: 12, color: .lightGray))
         _ = card("Мой профиль", description: "ФИО, должность и учётная запись — в личном кабинете ТЕМП.")
         _ = card("Уведомления", description: "Push-уведомления появятся после подключения APNs и серверной отправки.")
-        _ = card("О приложении", description: "ТЕМП · iOS Mobile v6. Веб-интерфейс обновляется отдельно через Cloudflare.")
+        _ = card("О приложении", description: "ТЕМП · iOS Mobile v7. Веб-интерфейс обновляется отдельно через Cloudflare.")
     }
 }
