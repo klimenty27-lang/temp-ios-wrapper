@@ -32,12 +32,13 @@ targets:
         CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
         CFBundleName: $(PRODUCT_NAME)
         CFBundlePackageType: APPL
-        CFBundleShortVersionString: '4.0'
-        CFBundleVersion: '4'
+        CFBundleShortVersionString: '5.0'
+        CFBundleVersion: '5'
         LSRequiresIPhoneOS: true
         UILaunchStoryboardName: LaunchScreen
         UIRequiresFullScreen: true
         UIViewControllerBasedStatusBarAppearance: true
+        NSFaceIDUsageDescription: ТЕМП использует Face ID для защиты доступа к приложению.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSAppTransportSecurity:
