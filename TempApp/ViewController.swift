@@ -163,13 +163,12 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     }
 
     @objc private func openSettings() {
-        let sheet = UIAlertController(title:"Защита приложения",message:"Выберите способ разблокировки ТЕМП. Пароль аккаунта по-прежнему вводится на веб-экране входа.",preferredStyle:.actionSheet)
-        sheet.addAction(UIAlertAction(title:"Face ID / код-пароль iPhone",style:.default) { [weak self] _ in self?.mode = "biometric" })
-        sheet.addAction(UIAlertAction(title:"Код-пароль iPhone",style:.default) { [weak self] _ in self?.mode = "passcode" })
-        sheet.addAction(UIAlertAction(title:"Без повторной проверки",style:.default) { [weak self] _ in self?.mode = "none" })
-        sheet.addAction(UIAlertAction(title:"Отмена",style:.cancel))
-        if let pop = sheet.popoverPresentationController { pop.barButtonItem = navigationItem.rightBarButtonItem }
-        present(sheet,animated:true)
+        let settings = TempSettingsViewController()
+        settings.selectedMode = mode
+        settings.onSelect = { [weak self] value in self?.mode = value }
+        let nav = UINavigationController(rootViewController: settings)
+        nav.modalPresentationStyle = .pageSheet
+        present(nav, animated: true)
     }
 
     // Only open allowed HTTPS navigation in the embedded app.
