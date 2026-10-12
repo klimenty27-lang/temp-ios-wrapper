@@ -8,6 +8,7 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     private var unlocked = false
     private var lockOverlay: UIView?
     private var hasLoaded = false
+    private var pendingPushToken: String?
     private var appObserver: NSObjectProtocol?
     private let background = UIColor(red: 3/255, green: 20/255, blue: 38/255, alpha: 1)
 
@@ -146,6 +147,16 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         }
     }
 
+    func receivedPushToken(_ token:String) {
+        pendingPushToken=token
+        deliverPushToken()
+    }
+    private func deliverPushToken(){
+        guard let token=pendingPushToken,hasLoaded,unlocked else{return}
+        let js="window.dispatchEvent(new CustomEvent('temp-native-push-token',{detail:{token:\"\(token)\",environment:'sandbox'}}));"
+        webView.evaluateJavaScript(js,completionHandler:nil)
+    }
+    func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!){deliverPushToken()}
     private func didUnlock() {
         unlocked = true
         lockOverlay?.removeFromSuperview()
@@ -153,7 +164,7 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         if !hasLoaded {
             hasLoaded = true
             webView.load(URLRequest(url:site, cachePolicy:.reloadRevalidatingCacheData))
-        }
+        } else { deliverPushToken() }
     }
 
     private func showAuthError(_ message:String) {
