@@ -32,8 +32,8 @@ targets:
         CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
         CFBundleName: $(PRODUCT_NAME)
         CFBundlePackageType: APPL
-        CFBundleShortVersionString: '7.0'
-        CFBundleVersion: '7'
+        CFBundleShortVersionString: '8.0'
+        CFBundleVersion: '8'
         LSRequiresIPhoneOS: true
         UILaunchStoryboardName: LaunchScreen
         UIRequiresFullScreen: true

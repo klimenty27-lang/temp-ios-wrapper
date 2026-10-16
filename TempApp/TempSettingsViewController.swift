@@ -3,6 +3,11 @@ import UIKit
 final class TempSettingsViewController: UIViewController {
     var selectedMode: String = "biometric"
     var onSelect: ((String) -> Void)?
+    var webVersion = "не определена"
+    var savedLogin = ""
+    var rememberLogin = true
+    var onRememberLogin: ((Bool) -> Void)?
+    var onForgetLogin: (() -> Void)?
     private let orange = UIColor(red: 1, green: 0.54, blue: 0.13, alpha: 1)
     private let navy = UIColor(red: 0.025, green: 0.09, blue: 0.17, alpha: 1)
     private let stack = UIStackView()
@@ -61,6 +66,8 @@ final class TempSettingsViewController: UIViewController {
         let button = UIButton(type: .system)
         button.contentHorizontalAlignment = .left
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        button.titleLabel?.numberOfLines = 0
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         button.setTitle((selectedMode == key ? "✓  " : "○  ") + title, for: .normal)
         button.setTitleColor(selectedMode == key ? orange : .white, for: .normal)
         button.addAction(UIAction { [weak self] _ in
@@ -76,8 +83,37 @@ final class TempSettingsViewController: UIViewController {
         addOption("Face ID или код-пароль устройства", key: "biometric", group: access)
         addOption("Без повторной проверки", key: "none", group: access)
         access.addArrangedSubview(text("Пароль аккаунта ТЕМП по-прежнему проверяется сервером.", size: 12, color: .lightGray))
+        let login = card("Сохранённый логин", description: savedLogin.isEmpty ? "Сохранённого логина пока нет." : savedLogin)
+        let toggle = UIButton(type: .system)
+        toggle.setTitle((rememberLogin ? "✓ " : "○ ") + "Запоминать логин", for: .normal)
+        toggle.contentHorizontalAlignment = .left
+        toggle.setTitleColor(orange, for: .normal)
+        toggle.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        toggle.addAction(UIAction { [weak self] _ in
+            guard let self = self else { return }
+            self.rememberLogin.toggle()
+            if !self.rememberLogin { self.savedLogin = "" }
+            self.onRememberLogin?(self.rememberLogin)
+            self.refresh()
+        }, for: .touchUpInside)
+        login.addArrangedSubview(toggle)
+        let forget = UIButton(type: .system)
+        forget.setTitle("Забыть сохранённый логин", for: .normal)
+        forget.contentHorizontalAlignment = .left
+        forget.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        forget.setTitleColor(orange, for: .normal)
+        forget.addAction(UIAction { [weak self] _ in
+            self?.onForgetLogin?()
+            self?.savedLogin = ""
+            self?.refresh()
+        }, for: .touchUpInside)
+        login.addArrangedSubview(forget)
+        login.addArrangedSubview(text("Пароль ТЕМП здесь не хранится. Для его заполнения используйте сохранённую запись в системных «Паролях». При нажатии «Выйти» вход в аккаунт завершается.", size: 13, color: .lightGray))
         _ = card("Мой профиль", description: "ФИО, должность и учётная запись — в личном кабинете ТЕМП.")
-        _ = card("Уведомления", description: "Push-уведомления появятся после подключения APNs и серверной отправки.")
-        _ = card("О приложении", description: "ТЕМП · iOS Mobile v7. Веб-интерфейс обновляется отдельно через Cloudflare.")
+        _ = card("Уведомления", description: "Push пока не подключены. Расписание напоминаний 21:00–22:00 остаётся согласованным, но этот пакет не включает серверную отправку.")
+        let nativeVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        _ = card("О приложении", description: "Оболочка iOS: " + nativeVersion + " (" + build + ")\nВеб-версия ТЕМП: " + webVersion)
+
     }
 }

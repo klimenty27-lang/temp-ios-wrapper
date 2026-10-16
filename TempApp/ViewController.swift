@@ -24,7 +24,6 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         config.websiteDataStore = .default()
         config.allowsInlineMediaPlayback = true
         let controller = WKUserContentController()
-        controller.add(self, name: "tempNativeSettings")
         controller.addUserScript(WKUserScript(source: """
           (function(){
             const meta = document.querySelector('meta[name="viewport"]') || document.createElement('meta');
@@ -41,39 +40,11 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
             document.head.appendChild(style);
           })();
           """, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
-        controller.addUserScript(WKUserScript(source: #"""
-(function(){
-  'use strict';
-  function enhanceSettings(){
-    const root=document.querySelector('.t64-settings');
-    if(!root || root.querySelector('#temp-native-settings-v7'))return;
-    const section=root.querySelector('#t64Mode')?.closest('section');
-    if(!section)return;
-    // This web dropdown only saved a preference, it did NOT change native Face ID.
-    const preference=section.querySelector('#t64Mode');
-    if(preference)preference.style.display='none';
-    const note=section.querySelector('.t64-note');
-    if(note)note.style.display='none';
-    const button=document.createElement('button');
-    button.id='temp-native-settings-v7';
-    button.type='button';
-    button.textContent='Вход и безопасность устройства';
-    button.style.cssText='width:100%;padding:14px 12px;margin:12px 0 4px;font-size:16px;font-weight:700;border-radius:12px;background:linear-gradient(#ffb64e,#f37b17);color:#061e35;border:1px solid #ffc879;';
-    button.addEventListener('click',function(){
-      window.webkit?.messageHandlers?.tempNativeSettings?.postMessage({action:'open'});
-    });
-    section.appendChild(button);
-  }
-  let queued=false;
-  const observer=new MutationObserver(function(){
-    if(queued)return;
-    queued=true;
-    requestAnimationFrame(function(){queued=false;enhanceSettings();});
-  });
-  observer.observe(document.documentElement,{subtree:true,childList:true});
-  enhanceSettings();
-})();
-"""#, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        controller.add(TempWeakScriptHandler(self), name: "tempNativeSettings")
+        controller.addUserScript(WKUserScript(source: TempMobileScripts.loginMemory,
+                                             injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        controller.addUserScript(WKUserScript(source: TempMobileScripts.settingsEntry,
+                                             injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         config.userContentController = controller
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -101,9 +72,7 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationController?.setNavigationBarHidden(true, animated: false)
-        // The old separate settings button has been removed.
         navigationItem.rightBarButtonItem = nil
-        // Native settings are now opened from the existing web Ещё → Настройки screen.
         showLock()
         appObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.willEnterForegroundNotification,
@@ -157,6 +126,9 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     private func lockIfRequired() {
         if mode == "none" { return }
         unlocked = false
+        if presentedViewController is UINavigationController {
+            dismiss(animated: false)
+        }
         showLock()
         authenticate()
     }
@@ -197,19 +169,44 @@ final class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         present(alert,animated:true)
     }
 
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "tempNativeSettings", unlocked else { return }
-        guard let body = message.body as? [String: String], body["action"] == "open" else { return }
-        openSettings()
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        // This bridge exposes only settings, never credentials, arbitrary JS or navigation.
+        guard message.name == "tempNativeSettings", unlocked,
+              UIApplication.shared.applicationState == .active,
+              message.frameInfo.isMainFrame,
+              message.frameInfo.securityOrigin.protocol == "https",
+              message.frameInfo.securityOrigin.host == site.host,
+              let data = message.body as? [String: Any],
+              data["action"] as? String == "open",
+              presentedViewController == nil else { return }
+        let version = data["webVersion"] as? String ?? ""
+        let login = data["savedLogin"] as? String ?? ""
+        openSettings(webVersion: version, savedLogin: login,
+                     rememberLogin: data["rememberLogin"] as? Bool ?? true)
     }
 
-    @objc private func openSettings() {
+    private func openSettings(webVersion: String, savedLogin: String, rememberLogin: Bool) {
         let settings = TempSettingsViewController()
         settings.selectedMode = mode
+        settings.webVersion = versionLabel(webVersion)
+        settings.savedLogin = String(savedLogin.prefix(320))
+        settings.rememberLogin = rememberLogin
         settings.onSelect = { [weak self] value in self?.mode = value }
+        settings.onRememberLogin = { [weak self] enabled in
+            self?.webView.evaluateJavaScript("window.TempLoginMemory?.setEnabled(" + (enabled ? "true" : "false") + ");", completionHandler: nil)
+        }
+        settings.onForgetLogin = { [weak self] in
+            self?.webView.evaluateJavaScript("window.TempLoginMemory?.forget();", completionHandler: nil)
+        }
         let nav = UINavigationController(rootViewController: settings)
         nav.modalPresentationStyle = .pageSheet
         present(nav, animated: true)
+    }
+
+    private func versionLabel(_ value: String) -> String {
+        guard value.range(of: "^[0-9]+(\\.[0-9]+){1,3}$", options: .regularExpression) != nil else { return "не определена" }
+        return String(value.prefix(32))
     }
 
     // Only open allowed HTTPS navigation in the embedded app.
